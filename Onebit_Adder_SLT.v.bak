@@ -1,0 +1,121 @@
+//And Gate
+module AndGate(a,b,c); 
+input a; 
+input b; 
+output c; 
+and a1(c,a,b); 
+endmodule 
+//Or Gate: 
+module OrGate(a,b,c); 
+input a; 
+input b; 
+output c; 
+or a2(c,a,b); 
+endmodule 
+//HALF ADDER (Gate level): 
+module half_adder(A,B,sum,carry); 
+input A,B; 
+output sum,carry; 
+xor(sum,A,B); 
+and(carry,A,B); 
+endmodule 
+//FULL ADDER (Gate Level): 
+module full_Adder(a,b,CIN,SUM,CARRY);
+input a,b,CIN; 
+output SUM,CARRY; 
+wire t1,t2,t3; 
+half_adder ha1(a,b,t1,t2); 
+half_adder ha2(t1,CIN,SUM,t3); 
+or o1(CARRY,t2,t3); 
+endmodule 
+//MUX_2X1: 
+module MUX_2x1(b,b_not,s,Y); 
+input b, b_not, s; 
+output Y; 
+wire y0, y1;
+wire ns;
+not n0(ns, s);
+and g1(y0, b, ns); //0
+and g2(y1, b_not, s); //1
+or g5(Y, y0, y1);
+endmodule
+//MUX_4X1: 
+module MUX_4x1(And,Or,adder,less,select,Y); 
+input And, Or, adder, less;
+input [1:0] select; 
+output Y; 
+wire y0, y1, y2,y3;
+wire ns0, ns1;
+not n0(ns0, select[0]);
+not n1(ns1, select[1]);
+and g1(y0, And, ns1, ns0); //00
+and g2(y1, Or, ns1, select[0]); //01
+and g3(y2, adder, select[1], ns0); //10
+and g4(y3, less, select[1], select[0]); //11
+or g5(Y, y0, y1, y2, y3);
+endmodule
+module OneBit_ALU(A, B, b_inv, carry_in, select, less, result, carry_out);
+input A, B, b_inv, carry_in, less;
+input [1:0] select;
+output result, carry_out;
+wire B_not, B_out, and_result, or_result, sum_result;
+not n1(B_not, B);
+MUX_2x1 m1(B, B_not, b_inv, B_out);
+AndGate a3(A, B_out, and_result);
+OrGate o1(A, B_out, or_result);
+full_Adder f1(A, B_out, carry_in, sum_result, carry_out);
+MUX_4x1 m2(and_result, or_result, sum_result, less, select, result);
+endmodule 
+module alu_4bit(A, B, b_inv, select, Result, CF, SF, ZF, OF);
+input [3:0] A, B;
+input b_inv;
+input [1:0] select;
+output [3:0] Result;
+output CF, SF, ZF, OF;
+wire [3:0] c_out;
+wire [3:0] sum_out;
+wire set_signal;
+wire initial_cin;
+// Subtraction ya SLT (select = 11) ke liye CarryIn = 1 hona chahiye
+assign initial_cin = (select == 2'b11) ? 1'b1 : ((select == 2'b10) ? b_inv : 1'b0);
+// MSB Adder ka Sum result acting as Set signal for SLT
+assign set_signal = sum_out[3];
+// ALU 0 (LSB) - receives 'set_signal' at 'less'
+OneBit_ALU alu0(A[0], B[0], b_inv, initial_cin, select, set_signal, Result[0], c_out[0], sum_out[0]);
+// ALU 1, 2, 3 - receive 1'b0 at 'less'
+OneBit_ALU alu1(A[1], B[1], b_inv, c_out[0], select, 1'b0, Result[1], c_out[1], sum_out[1]);
+OneBit_ALU alu2(A[2], B[2], b_inv, c_out[1], select, 1'b0, Result[2], c_out[2], sum_out[2]);
+OneBit_ALU alu3(A[3], B[3], b_inv, c_out[2], select, 1'b0, Result[3], c_out[3], sum_out[3]);
+// Status Flags Calculation
+assign CF = c_out[3];  // Carry Flag
+assign SF = Result[3]; // Sign Flag
+assign ZF = ~(Result[0] | Result[1] | Result[2] | Result[3]); // Zero Flag (NOR Gate)
+assign OF = c_out[2] ^ c_out[3]; // Overflow Flag
+endmodule
+//Common Testbench: 
+module tb_alu_4bit();
+reg [3:0] x, y;
+reg y_inv;
+reg [1:0] s;
+wire [3:0] result;
+wire cf, sf, zf, of;
+alu_4bit uut(
+    .A(x), .B(y), .b_inv(y_inv), .select(s),.Result(result), 
+.CF(cf), .SF(sf), .ZF(zf), .OF(of)
+);
+initial 
+begin
+    // 1. Test ADD: A = 5 (0101), B = 3 (0011) -> Result = 8 (1000)
+    x = 4'b0101; y = 4'b0011; y_inv = 0; s = 2'b10; #50;
+    // 2. Test SUB: A = 7 (0111), B = 2 (0010) -> Result = 5 (0101)
+    x = 4'b0111; y = 4'b0010; y_inv = 1; s = 2'b10; #50;
+    // 3. Test AND: A = 12 (1100), B = 10 (1010) -> Result = 8 (1000)
+    x = 4'b1100; y = 4'b1010; y_inv = 0; s = 2'b00; #50;
+    // 4. Test OR: A = 12 (1100), B = 10 (1010) -> Result = 14 (1110)
+    x = 4'b1100; y = 4'b1010; y_inv = 0; s = 2'b01; #50;
+    // 5. Test SLT (True): A = 2 (0010), B = 5 (0101) -> Result = 0001
+    x = 4'b0010; y = 4'b0101; y_inv = 1; s = 2'b11; #50;
+    // 6. Test SLT (False): A = 6 (0110), B = 3 (0011) -> Result = 0000
+    x = 4'b0110; y = 4'b0011; y_inv = 1; s = 2'b11; #50;
+end
+endmodule
