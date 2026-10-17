@@ -1,0 +1,26 @@
+module parameterized_alu #(
+    parameter N = 4 )(
+    input  wire [N-1:0] A,         
+    input  wire [N-1:0] B,         
+    input  wire [2:0]   ALU_Sel,   
+    output reg  [N-1:0] Result 
+);
+    localparam ADD = 3'b000;  // Add
+    localparam SUB = 3'b001;  // Subtract
+    localparam AND = 3'b010;  // Bitwise AND
+    localparam OR  = 3'b011;  // Bitwise OR
+    localparam XOR = 3'b100;  // Bitwise XOR
+    localparam NOT = 3'b101;  // Bitwise NOT (Operand A)
+    always @(*) 
+    begin
+        case (ALU_Sel)
+            ADD: Result = A + B;
+            SUB: Result = A - B;
+            AND: Result = A & B;
+            OR:  Result = A | B;
+            XOR: Result = A ^ B;
+            NOT: Result = ~A;
+            default: Result = {N{1'b0}};
+        endcase
+    end
+endmodule
