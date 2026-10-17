@@ -1,0 +1,73 @@
+module ALU_32Bit(
+    input  [31:0] x,
+    input  [31:0] y,
+    input  [3:0] alu_op,
+    output reg [31:0] result,
+    output zero_flag
+);
+    always @(*) begin
+        if (alu_op == 4'b0000)
+            result = x + y; // ADD
+        else if (alu_op == 4'b0001)
+            result = x - y; // SUB
+        else if (alu_op == 4'b0010)
+            result = x & y; // AND
+        else if (alu_op == 4'b0011)
+            result = x | y; // OR
+        else if (alu_op == 4'b0100)
+            result = x ^ y; // XOR
+        else if (alu_op == 4'b0101) begin // SLT(Signed)
+            if (x[31] != y[31])
+                result = x[31] ? 32'd1 : 32'd0;
+            else
+                result = (x - y) >> 31;
+        end
+        else if (alu_op == 4'b0110) begin // SLTU
+            result = (x < y) ? 32'd1 : 32'd0;
+        end
+        else if (alu_op == 4'b0111)
+            result = x << y[4:0]; // SLL
+        else if (alu_op == 4'b1000)
+            result = x >> y[4:0]; // SRL 
+        else if (alu_op == 4'b1001) begin // SRA 
+            if (x[31] == 1'b0)
+                result = x >> y[4:0];
+            else
+                result = (x >> y[4:0]) | ~(32'hFFFFFFFF >> y[4:0]);
+        end
+        else
+            result = 32'b0; // Default Safety Case
+    end
+    // Zero Flag Logic
+    assign zero_flag = (result == 32'b0);
+endmodule
+module tb_ALU_32Bit();
+    reg  [31:0] x;
+    reg  [31:0] y;
+    reg  [3:0]  operation;
+    wire [31:0] answer;
+    wire zero_flag;
+    ALU_32Bit dut (.x(x),.y(y),.operation(alu_op),.answer(result),.zero_flag(zero_flag));
+    initial begin
+               // 1. ADD: 10 + 5
+        x = 32'd10; y = 32'd5; operation = 4'b0000; #10;
+        // 2. SUB: 10 - 10 (Zero Flag Test)
+        x = 32'd10; y = 32'd10; operation = 4'b0001; #10;
+        // 3. AND
+        x = 32'h0000000A; y = 32'h0000000C; operation = 4'b0010; #10;
+        // 4. OR
+        x = 32'h0000000A; y = 32'h0000000C; operation = 4'b0011; #10;
+        // 5. XOR
+        x = 32'h0000000A; y = 32'h0000000C; operation = 4'b0100; #10;
+        // 6. SLT (Signed Comparison): -5 < 3 -> True (1)
+        x = -32'sd5; y = 32'd3; operation = 4'b0101; #10;
+        // 7. SLTU (Unsigned Comparison): 5 < 10 -> True (1)
+        x = 32'd5; y = 32'd10; operation = 4'b0110; #10;
+        // 8. SLL: 3 << 2
+        x = 32'd3; y = 32'd2; operation = 4'b0111; #10;
+        // 9. SRL: 16 >> 2
+        x = 32'd16; y = 32'd2; operation = 4'b1000; #10;
+        // 10. SRA: -16 >>> 2 
+        x = -32'sd16; y = 32'd2; operation = 4'b1001; #10;
+    end
+endmodule
