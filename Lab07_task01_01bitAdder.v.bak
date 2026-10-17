@@ -1,0 +1,103 @@
+//And Gate
+module AndGate(a,b,c); 
+input a; 
+input b; 
+output c; 
+and a1(c,a,b); 
+endmodule 
+//Or Gate: 
+module OrGate(a,b,c); 
+input a; 
+input b; 
+output c; 
+or a2(c,a,b); 
+endmodule 
+//HALF ADDER (Gate level): 
+module half_adder(A,B,sum,carry); 
+input A,B; 
+output sum,carry; 
+xor(sum,A,B); 
+and(carry,A,B); 
+endmodule 
+//FULL ADDER (Gate Level): 
+module full_Adder(a,b,CIN,SUM,CARRY);
+input a,b,CIN; 
+output SUM,CARRY; 
+wire t1,t2,t3; 
+half_adder ha1(a,b,t1,t2); 
+half_adder ha2(t1,CIN,SUM,t3); 
+or o1(CARRY,t2,t3); 
+endmodule 
+//MUX_2X1: 
+module MUX_2x1(b,b_not,s,Y); 
+input b, b_not, s; 
+output Y; 
+wire y0, y1;
+wire ns;
+not n0(ns, s);
+and g1(y0, b, ns); //0
+and g2(y1, b_not, s); //1
+or g5(Y, y0, y1);
+endmodule
+//MUX_4X1: 
+module MUX_4x1(And,Or,adder,select,Y); 
+input And, Or, adder;
+input [1:0] select; 
+output Y; 
+wire y0, y1, y2;
+wire ns0, ns1;
+not n0(ns0, select[0]);
+not n1(ns1, select[1]);
+and g1(y0, And, ns1, ns0); //00
+and g2(y1, Or, ns1, select[0]); //01
+and g3(y2, adder, select[1], ns0); //10
+or g5(Y, y0, y1, y2);
+endmodule
+module OneBit_Adder(A, B, b_inv, carry_in, select, result, carry_out);
+input A, B, b_inv, carry_in;
+input [1:0] select;
+output result, carry_out;
+wire B_not, B_out, and_result, or_result, sum_result, actual_carry;
+not n1(B_not, B);
+MUX_2x1 m1(B, B_not, b_inv, B_out);
+AndGate a3(A, B_out, and_result);
+OrGate o1(A, B_out, or_result);
+full_Adder f1(A, B_out, carry_in, sum_result, actual_carry);
+MUX_4x1 m2(and_result, or_result, sum_result, select, result);
+// Carry-out only for ADD/SUB
+assign carry_out =(select == 2'b10) ? actual_carry : 1'b0;
+endmodule 
+//Common Testbench: 
+module tb_OneBit_Adder(); 
+reg x, y, y_inv, c_in; 
+reg [1:0] s;
+wire result, c_out; 
+OneBit_Adder uut(x, y, y_inv, c_in, s, result, c_out); 
+initial  
+begin 
+// 1. Test AND (s = 2'b00)
+s = 2'b00; y_inv = 0; c_in = 0;
+x = 0; y = 0; #50;
+x = 0; y = 1; #50;
+x = 1; y = 0; #50;
+x = 1; y = 1; #50;
+// 2. Test OR (s=2'b01)
+s = 2'b01; y_inv = 0; c_in = 0;
+x = 0; y = 0; #50;
+x = 0; y = 1; #50;
+x = 1; y = 0; #50;
+x = 1; y = 1; #50;
+// 3. Test ADD (s=2'b10, y_inv=0)
+s = 2'b10; y_inv = 0; c_in = 0;
+x = 0; y = 0; #50;
+x = 0; y = 1; #50;
+x = 1; y = 0; #50;
+x = 1; y = 1; #50; 
+// 4. Test SUB (s=2'b10, y_inv=1, c_in=1) -> A-B= A+~B+1
+s = 2'b10; y_inv = 1; c_in = 1;
+x = 0; y = 0; #50; 
+x = 1; y = 0; #50; 
+x = 1; y = 1; #50; 
+x = 0; y = 1; 
+end 
+endmodule
