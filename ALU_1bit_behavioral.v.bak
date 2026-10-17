@@ -1,0 +1,56 @@
+module alu_1bit_behavioral (
+    input a,
+    input b,
+    input carry_in,
+    input b_inv,
+    input [1:0] select,
+    output reg result,
+    output reg carry_out
+);
+    reg b_mux;
+    reg sum_res;
+    always @(*) begin
+        if (b_inv)
+            b_mux = ~b;
+        else
+            b_mux = b;
+        {carry_out, sum_res} = a + b_mux + carry_in;
+        case (select)
+            2'b00: result = a & b_mux; // AND
+            2'b01: result = a | b_mux; // OR
+            2'b10: result = sum_res;   // ADD / SUB
+            default: result = 1'b0;
+        endcase
+    end
+endmodule
+
+//Common Testbench: 
+module tb_OneBit_ALU(); 
+reg x, y, y_inv, c_in; 
+reg [1:0] s;
+wire result, c_out; 
+alu_1bit_behavioral uut(x, y, c_in, y_inv, s, result, c_out); 
+initial  
+begin 
+s = 2'b00; y_inv = 0; c_in = 0;
+x = 0; y = 0; #50;
+x = 0; y = 1; #50;
+x = 1; y = 0; #50;
+x = 1; y = 1; #50;
+s = 2'b01; y_inv = 0; c_in = 0;
+x = 0; y = 0; #50;
+x = 0; y = 1; #50;
+x = 1; y = 0; #50;
+x = 1; y = 1; #50;
+s = 2'b10; y_inv = 0; c_in = 0;
+x = 0; y = 0; #50;
+x = 0; y = 1; #50;
+x = 1; y = 0; #50;
+x = 1; y = 1; #50; 
+s = 2'b10; y_inv = 1; c_in = 1;
+x = 0; y = 0; #50; 
+x = 1; y = 0; #50; 
+x = 1; y = 1; #50; 
+x = 0; y = 1; 
+end 
+endmodule
