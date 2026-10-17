@@ -1,0 +1,53 @@
+module alu_1bit_dataflow (
+    input a,
+    input b,
+    input carry_in,
+    input b_inv,
+    input [1:0] select,
+    output result,
+    output carry_out
+);
+    wire b_mux;
+    wire and_res, or_res, sum_res;
+    // B Inversion MUX
+    assign b_mux = b_inv ? ~b : b;
+    // Logic Functions
+    assign and_res = a & b_mux;
+    assign or_res  = a | b_mux;
+    // Full Adder Dataflow Logic
+    assign {carry_out, sum_res} = a + b_mux + carry_in;
+    // 4-to-1 Operation Multiplexer
+    assign result = (select == 2'b00) ? and_res :
+                    (select == 2'b01) ? or_res  :
+                    (select == 2'b10) ? sum_res : 1'b0;
+endmodule
+//Common Testbench: 
+module tb_OneBit_Adder(); 
+reg x, y, y_inv, c_in; 
+reg [1:0] s;
+wire result, c_out; 
+OneBit_Adder uut(x, y, c_in, y_inv, s, result, c_out); 
+initial  
+begin 
+s = 2'b00; y_inv = 0; c_in = 0;
+x = 0; y = 0; #50;
+x = 0; y = 1; #50;
+x = 1; y = 0; #50;
+x = 1; y = 1; #50;
+s = 2'b01; y_inv = 0; c_in = 0;
+x = 0; y = 0; #50;
+x = 0; y = 1; #50;
+x = 1; y = 0; #50;
+x = 1; y = 1; #50;
+s = 2'b10; y_inv = 0; c_in = 0;
+x = 0; y = 0; #50;
+x = 0; y = 1; #50;
+x = 1; y = 0; #50;
+x = 1; y = 1; #50; 
+s = 2'b10; y_inv = 1; c_in = 1;
+x = 0; y = 0; #50; 
+x = 1; y = 0; #50; 
+x = 1; y = 1; #50; 
+x = 0; y = 1; 
+end 
+endmodule
